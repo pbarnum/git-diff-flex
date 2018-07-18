@@ -1,0 +1,19 @@
+.gdf-handle {
+    position: absolute;
+    width: 3px;
+    background-color: #4569ad;
+    cursor: col-resize;
+}
+
+.gdf-handle:hover {
+    border: 1px solid #4569ad;
+    background-color: #5b8ae0;
+}
+
+.gdf-hidden {
+    display: none;
+}
+
+.gdf-parent:hover .gdf-handle {
+    display: block;
+}
