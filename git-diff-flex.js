@@ -1,8 +1,8 @@
 (function(window, document) {
 
-  let tableKey = 'gdfTable'
-  let tableHeightKey = 'gdfTableHeight'
-  let classes = {
+  const tableKey = 'gdfTable'
+  const tableHeightKey = 'gdfTableHeight'
+  const classes = {
     current: 'gdf-current',
     handle: 'gdf-handle',
     hidden: 'gdf-hidden',
@@ -19,6 +19,7 @@
    * Recalculate the handle on window resize.
    */
   window.addEventListener('resize', calculateHandlePosition);
+  window.addEventListener('scroll', findTables);
 
   /**
    * Mark the handle as 'undraggable' on mouse up.
@@ -31,9 +32,9 @@
    * Recalculate the handle when the table height changes on mouse move.
    */
   document.body.addEventListener('mousemove', function () {
-    let table = getCurrentTable();
+    const table = getCurrentTable();
     if (table && handle.classList.contains(classes.drag)) {
-      let height = table.getBoundingClientRect().height;
+      const height = table.getBoundingClientRect().height;
       if (this.dataset[tableHeightKey] != height) {
         this.dataset[tableHeightKey] = height;
         calculateHandlePosition();
@@ -45,47 +46,77 @@
    * Move the handle and the table columns on mouse move.
    */
   document.body.addEventListener('mousemove', function (e) {
-    let table = getCurrentTable();
+    const table = getCurrentTable();
     if (table && handle.classList.contains(classes.drag)) {
 
       // Set the current position
-      let colPos = table.querySelector('td.blob-num-deletion').getBoundingClientRect();
-      let col = table.querySelector('colgroup>col:nth-child(2)');
-      let rect = handle.getBoundingClientRect();
-      let capLeft = colPos.right + colPos.width + 100;
-      let capRight = table.querySelector('tbody').getBoundingClientRect().right
-        - table.querySelector('td.blob-num-addition').getBoundingClientRect().width
-        - 100;
+      const numColRect = getDeletionColumn(table);
+      const delDiffCol = table.querySelector('colgroup>col:nth-child(2)');
+      const capLeft = numColRect.left + numColRect.width + 100;
+      const capRight = table.getBoundingClientRect().right - numColRect.width - 100;
 
       // Move first... ask questions later!
       handle.style.left = e.clientX + 'px';
-      col.style.width = (rect.left - colPos.right + 1) + 'px';
+      delDiffCol.style.width = (handle.getBoundingClientRect().left - numColRect.right + 1) + 'px';
 
       // Stop moving if over the right cap
       if (e.clientX > capRight) {
         handle.style.left = capRight + 'px';
-        col.style.width = (capRight - colPos.left + 1) + 'px';
+        delDiffCol.style.width = (capRight - numColRect.left + 1) + 'px';
       }
 
       // Stop moving if over the left cap
       if (e.clientX < capLeft) {
         handle.style.left = capLeft + 'px';
-        col.style.width = (capLeft - colPos.right + 1) + 'px';
+        delDiffCol.style.width = (capLeft - numColRect.right + 1) + 'px';
       }
     }
   });
 
   /**
+   * Determines the deletion column dimensions depending on the type of diff.
+   */
+  function getDeletionColumn(table) {
+    const delNumCol = table.querySelector('td.blob-num-deletion');
+    const addNumCol = table.querySelector('td.blob-num-addition');
+    const rect = {
+      left: 0,
+      right: 0,
+      width: 0
+    };
+
+    if (delNumCol) {
+      const colRect = delNumCol.getBoundingClientRect();
+      rect.left = colRect.left;
+      rect.right = colRect.right;
+      rect.width = colRect.width;
+    } else if (addNumCol) {
+      const colRect = addNumCol.getBoundingClientRect();
+      const tableRect = table.getBoundingClientRect();
+      rect.left = tableRect.left;
+      rect.right = tableRect.left + colRect.width;
+      rect.width = colRect.width;
+    } else {
+      const tableRect = table.getBoundingClientRect();
+      rect.left = tableRect.left;
+      rect.right = tableRect.left + 66;
+      rect.width = 66;
+    }
+
+    return rect;
+  }
+
+  /**
    * Find all diff tables.
    */
   function findTables() {
-    return [].map.call(document.querySelectorAll('table.diff-table.file-diff-split'), (table, i) => {
-      table.classList.add(classes.table);
-      table.dataset[tableKey] = i;
-      table.addEventListener('mouseenter', showHandle);
-      table.addEventListener('mouseleave', hideHandle);
-      return table;
-    });
+    const tables = document.querySelectorAll(`table.diff-table.file-diff-split:not(.${classes.table})`);
+    for (let i = 0; i < tables.length; ++i) {
+      tables[i].classList.add(classes.table);
+      tables[i].dataset[tableKey] = i;
+      tables[i].addEventListener('mouseenter', showHandle);
+      tables[i].addEventListener('mouseleave', hideHandle);
+    }
   }
 
   /**
@@ -117,12 +148,12 @@
    * Calculate the handle's position, relative to the table's center column.
    */
   function calculateHandlePosition() {
-    let table = getCurrentTable();
+    const table = getCurrentTable();
     if (table) {
-      let bodyRect = document.body.getBoundingClientRect();
-      let tableRect = table.getBoundingClientRect();
-      let top = tableRect.top - bodyRect.top;
-      let centerColRect = table.querySelector('td.blob-num-addition').getBoundingClientRect();
+      const bodyRect = document.body.getBoundingClientRect();
+      const tableRect = table.getBoundingClientRect();
+      const top = tableRect.top - bodyRect.top;
+      const centerColRect = table.querySelector('td.blob-num-addition').getBoundingClientRect();
 
       handle.style.height = tableRect.height + 'px';
       handle.style.left = (centerColRect.left - 1) + 'px';
@@ -134,7 +165,7 @@
    * Create the handle singleton and append it to the DOM.
    */
   function generateHandle() {
-    let handle = document.createElement('div');
+    const handle = document.createElement('div');
     handle.classList.add(classes.handle);
     handle.classList.add(classes.hidden);
     handle.dataset[tableHeightKey] = 0;
