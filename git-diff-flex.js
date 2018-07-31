@@ -117,6 +117,9 @@
       tables[i].addEventListener('mouseenter', showHandle);
       tables[i].addEventListener('mouseleave', hideHandle);
     }
+
+    // Trigger a handle recalculation when mouse is over table before an event (page load)
+    calculateHandlePosition();
   }
 
   /**
@@ -153,10 +156,18 @@
       const bodyRect = document.body.getBoundingClientRect();
       const tableRect = table.getBoundingClientRect();
       const top = tableRect.top - bodyRect.top;
-      const centerColRect = table.querySelector('td.blob-num-addition').getBoundingClientRect();
+      const addNum = table.querySelector('td.blob-num-addition');
+      const delCode = table.querySelector('td.blob-code-deletion');
+      let center = 0;
+
+      if (addNum) {
+        center = addNum.getBoundingClientRect().left;
+      } else if (delCode) {
+        center = delCode.getBoundingClientRect().right;
+      }
 
       handle.style.height = tableRect.height + 'px';
-      handle.style.left = (centerColRect.left - 1) + 'px';
+      handle.style.left = (center - 1) + 'px';
       handle.style.top = top + 'px';
     }
   }
