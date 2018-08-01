@@ -19,7 +19,6 @@
    * Recalculate the handle on window resize.
    */
   window.addEventListener('resize', calculateHandlePosition);
-  window.addEventListener('scroll', findTables);
 
   /**
    * Mark the handle as 'undraggable' on mouse up.
@@ -29,18 +28,9 @@
   });
 
   /**
-   * Recalculate the handle when the table height changes on mouse move.
+   * Recalculate the handle when the table height changes on click.
    */
-  document.body.addEventListener('mousemove', function () {
-    const table = getCurrentTable();
-    if (table && handle.classList.contains(classes.drag)) {
-      const height = table.getBoundingClientRect().height;
-      if (this.dataset[tableHeightKey] != height) {
-        this.dataset[tableHeightKey] = height;
-        calculateHandlePosition();
-      }
-    }
-  });
+  document.body.addEventListener('click', heightChangeEvent);
 
   /**
    * Move the handle and the table columns on mouse move.
@@ -70,34 +60,80 @@
         handle.style.left = capLeft + 'px';
         delDiffCol.style.width = (capLeft - numColRect.right + 1) + 'px';
       }
+
+      // Last check to see if handle height is same as table height
+      heightChangeEvent();
     }
   });
+
+  /**
+   * Recalculates the handle height.
+   */
+  function heightChangeEvent() {
+    const table = getCurrentTable();
+    if (table) {
+      const height = table.getBoundingClientRect().height;
+      if (handle.dataset[tableHeightKey] != height) {
+        handle.dataset[tableHeightKey] = height;
+        calculateHandlePosition();
+      }
+    }
+  }
 
   /**
    * Determines the deletion column dimensions depending on the type of diff.
    */
   function getDeletionColumn(table) {
     const delNumCol = table.querySelector('td.blob-num-deletion');
-    const addNumCol = table.querySelector('td.blob-num-addition');
+    if (delNumCol) {
+      return delNumCol.getBoundingClientRect();
+    }
+
     const rect = {
       left: 0,
       right: 0,
       width: 0
     };
 
-    if (delNumCol) {
-      const colRect = delNumCol.getBoundingClientRect();
-      rect.left = colRect.left;
-      rect.right = colRect.right;
-      rect.width = colRect.width;
-    } else if (addNumCol) {
+    const tableRect = table.getBoundingClientRect();
+    const addNumCol = table.querySelector('td.blob-num-addition');
+    if (addNumCol) {
       const colRect = addNumCol.getBoundingClientRect();
-      const tableRect = table.getBoundingClientRect();
       rect.left = tableRect.left;
       rect.right = tableRect.left + colRect.width;
       rect.width = colRect.width;
     } else {
-      const tableRect = table.getBoundingClientRect();
+      rect.left = tableRect.left;
+      rect.right = tableRect.left + 66;
+      rect.width = 66;
+    }
+
+    return rect;
+  }
+
+  /**
+   * Determines the addition column dimensions depending on the type of diff.
+   */
+  function getAdditionColumn(table) {
+    const addNumCol = table.querySelector('td.blob-num-addition');
+    if (addNumCol) {
+      return addNumCol.getBoundingClientRect();
+    }
+
+    const rect = {
+      left: 0,
+      right: 0,
+      width: 0
+    };
+
+    const tableRect = table.getBoundingClientRect();
+    const delNumCol = table.querySelector('td.blob-num-deletion');
+    if (delNumCol) {
+      const colRect = delNumCol.getBoundingClientRect();
+      rect.left = table.querySelector('td.blob-code-deletion').getBoundingClientRect().right;
+      rect.right = rect.left + colRect.width;
+      rect.width = colRect.width;
+    } else {
       rect.left = tableRect.left;
       rect.right = tableRect.left + 66;
       rect.width = 66;
@@ -111,15 +147,14 @@
    */
   function findTables() {
     const tables = document.querySelectorAll(`table.diff-table.file-diff-split:not(.${classes.table})`);
-    for (let i = 0; i < tables.length; ++i) {
-      tables[i].classList.add(classes.table);
-      tables[i].dataset[tableKey] = i;
-      tables[i].addEventListener('mouseenter', showHandle);
-      tables[i].addEventListener('mouseleave', hideHandle);
+    if (tables.length > 0) {
+      for (let i = 0; i < tables.length; ++i) {
+        tables[i].classList.add(classes.table);
+        tables[i].dataset[tableKey] = i;
+        tables[i].addEventListener('mouseenter', showHandle);
+        tables[i].addEventListener('mouseleave', hideHandle);
+      }
     }
-
-    // Trigger a handle recalculation when mouse is over table before an event (page load)
-    calculateHandlePosition();
   }
 
   /**
@@ -145,29 +180,27 @@
   function hideHandle() {
     this.classList.remove(classes.current);
     handle.classList.add(classes.hidden);
+
+    // Make sure all tables are found
+    findTables();
   }
 
   /**
    * Calculate the handle's position, relative to the table's center column.
    */
   function calculateHandlePosition() {
+    // Make sure all tables are found
+    findTables();
+
     const table = getCurrentTable();
     if (table) {
       const bodyRect = document.body.getBoundingClientRect();
       const tableRect = table.getBoundingClientRect();
       const top = tableRect.top - bodyRect.top;
-      const addNum = table.querySelector('td.blob-num-addition');
-      const delCode = table.querySelector('td.blob-code-deletion');
-      let center = 0;
-
-      if (addNum) {
-        center = addNum.getBoundingClientRect().left;
-      } else if (delCode) {
-        center = delCode.getBoundingClientRect().right;
-      }
+      const centerRect = getAdditionColumn(table);
 
       handle.style.height = tableRect.height + 'px';
-      handle.style.left = (center - 1) + 'px';
+      handle.style.left = (centerRect.left - 1) + 'px';
       handle.style.top = top + 'px';
     }
   }

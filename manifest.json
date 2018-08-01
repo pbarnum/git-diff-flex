@@ -1,6 +1,6 @@
 {
   "name": "Git Diff Flex",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Git Diff Flex adds a draggable pane bezel between two files when comparing diffs! Currently only for github.com.",
   "permissions": [
     "activeTab",
@@ -25,8 +25,6 @@
     }
   ],
   "icons": {
-    "16": "icon_16.png",
-    "48": "icon_48.png",
     "128": "icon_128.png"
   },
   "manifest_version": 2
