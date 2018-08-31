@@ -15,6 +15,19 @@
   // The main program... just mark the tables
   findTables();
 
+  // Find tables when user clicks on the "files" sub-nav tab
+  let subNav = document.querySelector('a.tabnav-tab[href$="files"]');
+  if (subNav) {
+    subNav.addEventListener('click', () => {
+      let to = setTimeout(() => {
+        if (document.getElementById('files_bucket')) {
+          findTables();
+          clearTimeout(to);
+        }
+      }, 100);
+    });
+  }
+
   /**
    * Recalculate the handle on window resize.
    */
