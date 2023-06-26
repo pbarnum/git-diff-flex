@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+        html {
+            min-width: 400px;
+        }
+        #status {
+            margin-top: 10px;
+        }
+    </style>
+  </head>
+  <body>
+    <h1>Preferences</h1>
+
+    <h2>Toggle Buttons</h2>
+    <div>
+        <p>Toggle buttons are located in the file's header and is used to quickly switch between viewing the deletions, additions, or both (split).</p>
+    </div>
+    <select id="toggle-buttons">
+        <option value="enabled">Enable</option>
+      <option value="disabled">Disable</option>
+    </select>
+
+    <h2>Word Wrap</h2>
+    <div>
+        <p>By default, the code blocks in both file versions will wrap to the next line. This can be toggled when "Toggle Buttons" is "enabled".</p>
+    </div>
+    <select id="word-wrap">
+      <option value="enabled">Enable</option>
+      <option value="disabled">Disable</option>
+    </select>
+
+    <div id="status"></div>
+    <button id="save">Save</button>
+
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,10 +1,13 @@
 const rule1 = {
   conditions: [
     new chrome.declarativeContent.PageStateMatcher({
-      pageUrl: { hostContains: 'github.com' }
-    })
+      pageUrl: {
+        hostContains: "github.com",
+        pathSuffix: "/files",
+      },
+    }),
   ],
-  actions: [new chrome.declarativeContent.ShowPageAction()]
+  actions: [new chrome.declarativeContent.ShowPageAction()],
 };
 
 chrome.runtime.onInstalled.addListener(function () {

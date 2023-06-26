@@ -1,19 +1,72 @@
 .gdf-handle {
-    position: absolute;
-    width: 3px;
-    background-color: #4569ad;
-    cursor: col-resize;
+  position: absolute;
+  width: 3px;
+  background-color: #4569ad;
+  cursor: col-resize;
 }
 
 .gdf-handle:hover {
-    border: 1px solid #4569ad;
-    background-color: #5b8ae0;
+  border: 1px solid #4569ad;
+  background-color: #5b8ae0;
 }
 
 .gdf-hidden {
-    display: none;
+  display: none !important;
 }
 
 .gdf-parent:hover .gdf-handle {
-    display: block;
+  display: block;
+}
+
+.gdf-table-clipped td.blob-code {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gdf-table-clipped td > span.blob-code-inner {
+  white-space: pre;
+}
+
+.gdf-btn-toggle-split {
+  min-width: 76px;
+  background: linear-gradient(
+    90deg,
+    var(--color-danger-emphasis) 0%,
+    var(--color-danger-emphasis) 48%,
+    var(--color-scale-black) 49%,
+    var(--color-scale-black) 51%,
+    var(--color-success-emphasis) 52%,
+    var(--color-success-emphasis) 100%
+  );
+  border-color: var(--color-scale-black) !important;
+}
+
+.gdf-btn-toggle-add {
+  min-width: 76px;
+  background: linear-gradient(
+    90deg,
+    var(--color-danger-emphasis) 0%,
+    var(--color-danger-emphasis) 23%,
+    var(--color-scale-black) 24%,
+    var(--color-scale-black) 25%,
+    var(--color-success-emphasis) 26%,
+    var(--color-success-emphasis) 100%
+  );
+  border-color: var(--color-scale-black) !important;
+}
+
+.gdf-btn-toggle-del {
+  min-width: 76px;
+  background: linear-gradient(
+    90deg,
+    var(--color-danger-emphasis) 0%,
+    var(--color-danger-emphasis) 73%,
+    var(--color-scale-black) 74%,
+    var(--color-scale-black) 75%,
+    var(--color-success-emphasis) 76%,
+    var(--color-success-emphasis) 100%
+  );
+  border-color: var(--color-scale-black) !important;
 }
