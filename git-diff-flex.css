@@ -29,6 +29,14 @@
   white-space: pre;
 }
 
+.gdf-table-clipped td.line-comments {
+  overflow-x: hidden;
+}
+
+.gdf-table-clipped td.line-comments > div.comment-holder {
+  min-width: 780px;
+}
+
 .gdf-btn-toggle-split {
   min-width: 76px;
   background: linear-gradient(
