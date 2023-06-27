@@ -1,4 +1,4 @@
-(function (window, document) {
+(function (document) {
   /**
    * Set up configurations and automatically update when changes are detected.
    */
@@ -12,7 +12,6 @@
 
   // Watch for changes to the user's options & apply them
   chrome.storage.onChanged.addListener((items, area) => {
-    console.log(items);
     if (area === "sync" && items) {
       if (items.toggleButtons) {
         cfg.toggleButtons = items.toggleButtons.newValue;
@@ -58,9 +57,9 @@
   const tableKey = "gdfTable";
   const tableHeightKey = "gdfTableHeight";
   const classes = {
-    current: "gdf-current",
     handle: "gdf-handle",
     hidden: "gdf-hidden",
+    file: "gdf-file",
     table: "gdf-table",
     clipped: "gdf-table-clipped",
     drag: "gdf-drag",
@@ -69,80 +68,6 @@
     toggleAdditions: "gdf-btn-toggle-add",
     toggleDeletions: "gdf-btn-toggle-del",
   };
-
-  // The main program... just mark the tables
-  findTables();
-
-  // // Find tables when user clicks on the "files" sub-nav tab
-  // let subNav = document.querySelector('a.tabnav-tab[href$="files"]');
-  // if (subNav) {
-  //   subNav.addEventListener("click", () => {
-  //     let to = setTimeout(() => {
-  //       if (document.getElementById("files_bucket")) {
-  //         findTables();
-  //         clearTimeout(to);
-  //       }
-  //     }, 100);
-  //   });
-  // }
-
-  // window.addEventListener("popstate", function () {
-  //   handle.classList.remove(classes.hidden);
-  // });
-  // window.addEventListener("pushstate", function () {
-  //   handle.classList.add(classes.hidden);
-  // });
-
-  // /**
-  //  * Recalculate the handle on window resize.
-  //  */
-  // window.addEventListener("resize", calculateHandlePosition);
-
-  // /**
-  //  * Mark the handle as 'undraggable' on mouse up.
-  //  */
-  // document.body.addEventListener("mouseup", function () {
-  //   handle.classList.remove(classes.drag);
-  // });
-
-  // /**
-  //  * Recalculate the handle when the table height changes on click.
-  //  */
-  // document.body.addEventListener("click", heightChangeEvent);
-
-  // /**
-  //  * Move the handle and the table columns on mouse move.
-  //  */
-  // document.body.addEventListener("mousemove", function (e) {
-  //   const table = getCurrentTable();
-  //   if (table && handle.classList.contains(classes.drag)) {
-  //     // Set the current position
-  //     const numColDelRect = getDeletionNumberColumn(table);
-  //     const widthNode = getSplitWidthNode(table);
-  //     const capLeft = numColDelRect.left + numColDelRect.width + 100;
-  //     const capRight = table.getBoundingClientRect().right - numColDelRect.width - 100;
-  //     const btn = table.closest(".file").querySelector(`.${classes.toggleButton}`);
-
-  //     if (e.clientX > capRight) {
-  //       // Stop moving if over the right cap
-  //       handle.style.left = capRight + "px";
-  //       updateSplitWidth(widthNode, capRight - numColDelRect.left - numColDelRect.width + 1);
-  //       toggleButtonDeletions(btn);
-  //     } else if (e.clientX < capLeft) {
-  //       // Stop moving if over the left cap
-  //       handle.style.left = capLeft + "px";
-  //       updateSplitWidth(widthNode, capLeft - numColDelRect.right + 1);
-  //       toggleButtonAdditions(btn);
-  //     } else {
-  //       handle.style.left = e.clientX + "px";
-  //       updateSplitWidth(widthNode, handle.getBoundingClientRect().left - numColDelRect.right + 1);
-  //       toggleButtonSplit(btn);
-  //     }
-
-  //     // Last check to see if handle height is same as table height
-  //     heightChangeEvent();
-  //   }
-  // });
 
   /**
    * Gets the "deletion" table column. This is used to apply positioning.
@@ -156,17 +81,6 @@
    */
   function updateSplitWidth(node, val) {
     node.style.width = `${val}px`;
-  }
-
-  /**
-   * Recalculates the handle height.
-   */
-  function heightChangeEvent(file, table, handle) {
-    const height = table.getBoundingClientRect().height;
-    if (handle.dataset[tableHeightKey] != height) {
-      handle.dataset[tableHeightKey] = height;
-      calculateHandlePosition(file, table, handle);
-    }
   }
 
   /**
@@ -235,33 +149,38 @@
    * Find all diff tables that have not been initialized.
    */
   function findTables() {
-    const tables = document.querySelectorAll(`table.diff-table.file-diff-split:not(.${classes.table})`);
-    if (tables.length > 0) {
-      for (let i = 0; i < tables.length; ++i) {
-        // Find the parent "file" element
-        const file = tables[i].closest(".file");
+    const files = document.querySelectorAll(`.file:not(.${classes.file}`);
+    if (files.length > 0) {
+      for (let i = 0; i < files.length; ++i) {
+        const file = files[i];
+        file.classList.add(classes.file);
 
         // Generate and append the "handle" element
         const handle = generateHandle(file);
 
+        const table = file.querySelector(`table.diff-table.file-diff-split:not(.${classes.table})`);
+        if (!table) {
+          continue;
+        }
+
         // Generate and append the "toggle" view button
-        const btn = constructToggleButton(tables[i], handle);
+        const btn = constructToggleButton(file, table, handle);
 
         // Customize the table element
-        tables[i].classList.add(classes.table);
-        tables[i].dataset[tableKey] = i;
-        tables[i].addEventListener("mouseenter", showHandle(file, tables[i], handle));
+        table.classList.add(classes.table);
+        if (isWordWrapEnabled()) {
+          table.classList.add(classes.clipped);
+        }
+        table.addEventListener("mouseenter", showHandle(file, table, handle));
 
         // Observe the table's resize events
         const ro = new ResizeObserver((entries) => {
           for (let entry of entries) {
-            const cr = entry.contentRect;
-            console.log(handle, cr);
-            handle.style.height = `${cr.height}px`;
+            calculateHandlePosition(file, entry.target, handle);
           }
         });
 
-        ro.observe(tables[i]);
+        ro.observe(table);
 
         // Remove the ability to drag the handle when the mouse button is up
         file.addEventListener("mouseup", function () {
@@ -272,9 +191,9 @@
         file.addEventListener("mousemove", function (e) {
           // The handle will contain the "drag" class when it detects a mouse down event
           if (handle.classList.contains(classes.drag)) {
-            const tableRect = tables[i].getBoundingClientRect();
-            const numColDelRect = getDeletionNumberColumn(tables[i]);
-            const widthNode = getSplitWidthNode(tables[i]);
+            const tableRect = table.getBoundingClientRect();
+            const numColDelRect = getDeletionNumberColumn(table);
+            const widthNode = getSplitWidthNode(table);
             const capLeft = numColDelRect.left + numColDelRect.width + 100;
             const capRight = tableRect.right - numColDelRect.width - 100;
 
@@ -295,7 +214,7 @@
             }
 
             // Last check to see if handle height is same as table height
-            heightChangeEvent(file, tables[i], handle);
+            calculateHandlePosition(file, table, handle);
           }
         });
       }
@@ -305,8 +224,8 @@
   /**
    * Builds a new toggle button to be added to the "file" element.
    */
-  function constructToggleButton(table, handle) {
-    const header = table.closest(".file").querySelector(".file-info");
+  function constructToggleButton(file, table, handle) {
+    const header = file.querySelector(".file-info");
     const btn = document.createElement("button");
     btn.innerText = "Split";
     btn.classList.add("btn", "btn-sm", "btn-primary", classes.toggleButton, classes.toggleSplit);
@@ -316,6 +235,10 @@
     div.append(btn);
     div.classList.add("flex-shrink-0");
     header.after(div);
+
+    if (!isToggleButtonsEnabled()) {
+      btn.classList.add(classes.hidden);
+    }
 
     return btn;
   }
@@ -377,20 +300,10 @@
   }
 
   /**
-   * Get the current table the mouse is over.
-   */
-  function getCurrentTable() {
-    return document.querySelector(`.${classes.current}`);
-  }
-
-  /**
    * On table enter, mark as current, show the handle to the user, and recalculate position.
    */
   function showHandle(file, table, handle) {
-    table.classList.add(classes.current);
-    handle.dataset[tableKey] = table.dataset[tableKey];
-    // handle.classList.remove(classes.hidden);
-    calculateHandlePosition(file, table, handle);
+    return () => calculateHandlePosition(file, table, handle);
   }
 
   /**
@@ -401,7 +314,6 @@
     const tableRect = table.getBoundingClientRect();
     const top = tableRect.top - bodyRect.top;
     const centerRect = getAdditionNumberColumn(table);
-    console.log(centerRect);
 
     handle.style.height = `${tableRect.height}px`;
     handle.style.left = `${centerRect.left - tableRect.left - 1}px`;
@@ -413,29 +325,26 @@
    */
   function generateHandle(file) {
     const handle = document.createElement("div");
-    handle.classList.add(classes.handle /*classes.hidden*/);
-    handle.dataset[tableHeightKey] = 0;
+    handle.classList.add(classes.handle);
 
     handle.onmousedown = function (e) {
       e.preventDefault();
       this.classList.add(classes.drag);
-      const table = getCurrentTable();
-      if (table) {
-        const btn = file.querySelector(`.${classes.toggleButton}`);
-        toggleButtonSplit(btn);
-      }
+      const btn = file.querySelector(`.${classes.toggleButton}`);
+      toggleButtonSplit(btn);
     };
 
     handle.onmouseup = function () {
       this.classList.remove(classes.drag);
     };
 
-    handle.onmouseenter = function () {
-      this.classList.remove(classes.hidden);
-    };
-
     file.appendChild(handle);
 
     return handle;
   }
-})(window, document);
+
+  // Periodically attempt to find unconverted tables
+  setInterval(() => {
+    findTables();
+  }, 500);
+})(document);
