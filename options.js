@@ -1,7 +1,17 @@
 // Saves options to chrome.storage
 const saveOptions = () => {
-  const toggleButtons = document.getElementById("toggle-buttons").value;
-  const wordWrap = document.getElementById("word-wrap").value;
+  const toggleEl = document.getElementById("toggle-buttons");
+  const toggleButtons = toggleEl.checked;
+  const wordWrapEl = document.getElementById("word-wrap");
+  let wordWrap = wordWrapEl.checked;
+
+  if (!toggleButtons) {
+    wordWrap = false;
+    document.getElementById("word-wrap").checked = false;
+    document.getElementById("word-wrap").disabled = true;
+  } else {
+    document.getElementById("word-wrap").disabled = false;
+  }
 
   chrome.storage.sync.set(
     {
@@ -11,10 +21,12 @@ const saveOptions = () => {
     () => {
       // Update status to let user know options were saved.
       const status = document.getElementById("status");
-      status.textContent = "Options saved.";
+      status.textContent = "Settings updated!";
+      status.classList.add("success");
       setTimeout(() => {
         status.textContent = "";
-      }, 750);
+        status.classList.remove("success");
+      }, 2000);
     }
   );
 };
@@ -23,23 +35,23 @@ const saveOptions = () => {
 // stored in chrome.storage.
 const restoreOptions = () => {
   chrome.storage.sync.get(
-    { toggleButtons: "enabled", wordWrap: "enabled" },
+    { toggleButtons: true, wordWrap: true },
     (items) => {
-      if (items.toggleButtons === "") {
-        items.toggleButtons = "enabled";
+      if (items.toggleButtons === undefined) {
+        items.toggleButtons = true;
         chrome.storage.sync.set({ toggleButtons: items.toggleButtons });
       }
 
-      if (items.wordWrap === "") {
-        items.wordWrap = "enabled";
+      if (items.wordWrap === undefined) {
+        items.wordWrap = true;
         chrome.storage.sync.set({ wordWrap: items.wordWrap });
       }
 
-      document.getElementById("toggle-buttons").value = items.toggleButtons;
-      document.getElementById("word-wrap").value = items.wordWrap;
+      document.getElementById("toggle-buttons").checked = items.toggleButtons === true;
+      document.getElementById("word-wrap").checked = items.wordWrap === true;
     }
   );
 };
 
 document.addEventListener("DOMContentLoaded", restoreOptions);
-document.getElementById("save").addEventListener("click", saveOptions);
+document.querySelectorAll("input").forEach((el) => el.addEventListener("change", saveOptions));
