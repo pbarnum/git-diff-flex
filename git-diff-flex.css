@@ -20,13 +20,27 @@
 
 .gdf-table-clipped td.blob-code {
   max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-y: hidden;
+  overflow-x: scroll;
   white-space: nowrap;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.gdf-table-clipped td > span.blob-code-inner {
+.gdf-table-clipped td.blob-code.blob-code-inner {
   white-space: pre;
+}
+
+.gdf-table-clipped td.blob-code::-webkit-scrollbar {
+  display: none;
+}
+
+.gdf-table-clipped td.blob-code .blob-code-inner {
+  white-space: pre;
+}
+
+.gdf-table-clipped button.add-line-comment {
+  position: fixed;
 }
 
 .gdf-table-clipped td.line-comments {
@@ -41,40 +55,40 @@
   min-width: 76px;
   background: linear-gradient(
     90deg,
-    var(--color-danger-emphasis) 0%,
-    var(--color-danger-emphasis) 48%,
-    var(--color-scale-black) 49%,
-    var(--color-scale-black) 51%,
-    var(--color-success-emphasis) 52%,
-    var(--color-success-emphasis) 100%
+    #f85149 0%,
+    #f85149 48%,
+    #000000 49%,
+    #000000 51%,
+    #2ea043 52%,
+    #2ea043 100%
   );
-  border-color: var(--color-scale-black) !important;
+  border-color: #000000 !important;
 }
 
 .gdf-btn-toggle-add {
   min-width: 76px;
   background: linear-gradient(
     90deg,
-    var(--color-danger-emphasis) 0%,
-    var(--color-danger-emphasis) 23%,
-    var(--color-scale-black) 24%,
-    var(--color-scale-black) 25%,
-    var(--color-success-emphasis) 26%,
-    var(--color-success-emphasis) 100%
+    #f85149 0%,
+    #f85149 23%,
+    #000000 24%,
+    #000000 25%,
+    #2ea043 26%,
+    #2ea043 100%
   );
-  border-color: var(--color-scale-black) !important;
+  border-color: #000000 !important;
 }
 
 .gdf-btn-toggle-del {
   min-width: 76px;
   background: linear-gradient(
     90deg,
-    var(--color-danger-emphasis) 0%,
-    var(--color-danger-emphasis) 73%,
-    var(--color-scale-black) 74%,
-    var(--color-scale-black) 75%,
-    var(--color-success-emphasis) 76%,
-    var(--color-success-emphasis) 100%
+    #f85149 0%,
+    #f85149 73%,
+    #000000 74%,
+    #000000 75%,
+    #2ea043 76%,
+    #2ea043 100%
   );
-  border-color: var(--color-scale-black) !important;
+  border-color: #000000 !important;
 }

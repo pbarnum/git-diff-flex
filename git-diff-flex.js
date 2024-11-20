@@ -2,15 +2,19 @@
   /**
    * Set up configurations and automatically update when changes are detected.
    */
-  const cfg = { toggleButtons: "enabled", wordWrap: "enabled" };
+  const cfg = { toggleButtons: true, wordWrap: true };
 
-  // Initialize the stored preferences
+  /**
+   * Initialize the stored preferences.
+   */
   chrome.storage.sync.get().then((items) => {
     Object.assign(cfg, items);
     applyOptions();
   });
 
-  // Watch for changes to the user's options & apply them
+  /**
+   * Watch for changes to the user's options & apply them.
+   */
   chrome.storage.onChanged.addListener((items, area) => {
     if (area === "sync" && items) {
       if (items.toggleButtons) {
@@ -23,6 +27,9 @@
     }
   });
 
+  /**
+   * Apply the user's options to the DOM.
+   */
   function applyOptions() {
     const buttons = document.querySelectorAll(`.${classes.toggleButton}`);
     for (let i = 0; i < buttons.length; ++i) {
@@ -43,19 +50,23 @@
     }
   }
 
+  /**
+   * Determines if the toggle buttons are enabled.
+   */
   function isToggleButtonsEnabled() {
-    return cfg.toggleButtons === "enabled";
+    return cfg.toggleButtons;
   }
 
+  /**
+   * Determines if word wrap is enabled.
+   */
   function isWordWrapEnabled() {
-    return cfg.wordWrap === "enabled";
+    return cfg.wordWrap;
   }
 
   /**
    * Constants and known classes.
    */
-  const tableKey = "gdfTable";
-  const tableHeightKey = "gdfTableHeight";
   const classes = {
     handle: "gdf-handle",
     hidden: "gdf-hidden",
@@ -150,74 +161,74 @@
    */
   function findTables() {
     const files = document.querySelectorAll(`.file:not(.${classes.file}`);
-    if (files.length > 0) {
-      for (let i = 0; i < files.length; ++i) {
-        const file = files[i];
-        file.classList.add(classes.file);
+    for (let i = 0; i < files.length; ++i) {
+      const file = files[i];
 
-        // Generate and append the "handle" element
-        const handle = generateHandle(file);
-
-        const table = file.querySelector(`table.diff-table.file-diff-split:not(.${classes.table})`);
-        if (!table) {
-          continue;
-        }
-
-        // Generate and append the "toggle" view button
-        const btn = constructToggleButton(file, table, handle);
-
-        // Customize the table element
-        table.classList.add(classes.table);
-        if (isWordWrapEnabled()) {
-          table.classList.add(classes.clipped);
-        }
-        table.addEventListener("mouseenter", showHandle(file, table, handle));
-
-        // Observe the table's resize events
-        const ro = new ResizeObserver((entries) => {
-          for (let entry of entries) {
-            calculateHandlePosition(file, entry.target, handle);
-          }
-        });
-
-        ro.observe(table);
-
-        // Remove the ability to drag the handle when the mouse button is up
-        file.addEventListener("mouseup", function () {
-          handle.classList.remove(classes.drag);
-        });
-
-        // Calculate the handle's position during the mouse move event
-        file.addEventListener("mousemove", function (e) {
-          // The handle will contain the "drag" class when it detects a mouse down event
-          if (handle.classList.contains(classes.drag)) {
-            const tableRect = table.getBoundingClientRect();
-            const numColDelRect = getDeletionNumberColumn(table);
-            const widthNode = getSplitWidthNode(table);
-            const capLeft = numColDelRect.left + numColDelRect.width + 100;
-            const capRight = tableRect.right - numColDelRect.width - 100;
-
-            if (e.clientX > capRight) {
-              // Stop moving if over the right cap
-              handle.style.left = `${capRight - tableRect.left}px`;
-              updateSplitWidth(widthNode, capRight - numColDelRect.left - numColDelRect.width + 1);
-              toggleButtonDeletions(btn);
-            } else if (e.clientX < capLeft) {
-              // Stop moving if over the left cap
-              handle.style.left = `${capLeft - numColDelRect.left}px`;
-              updateSplitWidth(widthNode, capLeft - numColDelRect.right + 1);
-              toggleButtonAdditions(btn);
-            } else {
-              handle.style.left = `${e.clientX - tableRect.left}px`;
-              updateSplitWidth(widthNode, handle.getBoundingClientRect().left - numColDelRect.right + 1);
-              toggleButtonSplit(btn);
-            }
-
-            // Last check to see if handle height is same as table height
-            calculateHandlePosition(file, table, handle);
-          }
-        });
+      // Don't mark this file if it's table does not yet exist
+      const table = file.querySelector(`table.diff-table.file-diff-split:not(.${classes.table})`);
+      if (!table) {
+        continue;
       }
+
+      file.classList.add(classes.file);
+
+      // Generate and append the "handle" element
+      const handle = generateHandle(file);
+
+      // Generate and append the "toggle" view button
+      const btn = constructToggleButton(file, table, handle);
+
+      // Customize the table element
+      table.classList.add(classes.table);
+      if (isWordWrapEnabled()) {
+        table.classList.add(classes.clipped);
+      }
+      table.addEventListener("mouseenter", showHandle(file, table, handle));
+
+      // Observe the table's resize events
+      const ro = new ResizeObserver((entries) => {
+        for (let entry of entries) {
+          calculateHandlePosition(file, entry.target, handle);
+        }
+      });
+
+      ro.observe(table);
+
+      // Remove the ability to drag the handle when the mouse button is up
+      file.addEventListener("mouseup", function () {
+        handle.classList.remove(classes.drag);
+      });
+
+      // Calculate the handle's position during the mouse move event
+      file.addEventListener("mousemove", function (e) {
+        // The handle will contain the "drag" class when it detects a mouse down event
+        if (handle.classList.contains(classes.drag)) {
+          const tableRect = table.getBoundingClientRect();
+          const numColDelRect = getDeletionNumberColumn(table);
+          const widthNode = getSplitWidthNode(table);
+          const capLeft = numColDelRect.left + numColDelRect.width + 100;
+          const capRight = tableRect.right - numColDelRect.width - 100;
+
+          if (e.clientX > capRight) {
+            // Stop moving if over the right cap
+            handle.style.left = `${capRight - tableRect.left}px`;
+            updateSplitWidth(widthNode, capRight - numColDelRect.left - numColDelRect.width + 1);
+            toggleButtonDeletions(btn);
+          } else if (e.clientX < capLeft) {
+            // Stop moving if over the left cap
+            handle.style.left = `${capLeft - numColDelRect.left}px`;
+            updateSplitWidth(widthNode, capLeft - numColDelRect.right + 1);
+            toggleButtonAdditions(btn);
+          } else {
+            handle.style.left = `${e.clientX - tableRect.left}px`;
+            updateSplitWidth(widthNode, handle.getBoundingClientRect().left - numColDelRect.right + 1);
+            toggleButtonSplit(btn);
+          }
+
+          // Last check to see if handle height is same as table height
+          calculateHandlePosition(file, table, handle);
+        }
+      });
     }
   }
 
@@ -343,8 +354,21 @@
     return handle;
   }
 
-  // Periodically attempt to find unconverted tables
-  setInterval(() => {
-    findTables();
-  }, 500);
+  let tmpobserver;
+  tmpobserver = new MutationObserver(() => {
+    // In case the page takes longer to load, obtain and observe when the "files"
+    // element comes into the DOM.
+    const files = document.getElementById('files');
+    if (files) {
+      findTables();
+      const observer = new MutationObserver(findTables);
+      observer.observe(files, { childList: true, subtree: true });
+      tmpobserver.disconnect();
+    }
+  });
+  tmpobserver.observe(document.body, { childList: true, subtree: true });
+
+  // Find existing tables and initialize the script.
+  findTables();
+
 })(document);
