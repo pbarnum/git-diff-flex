@@ -3,6 +3,9 @@ Git Diff Flex adds a draggable pane bezel between two files when comparing diffs
 
 https://chrome.google.com/webstore/detail/git-diff-flex/deholaolbodagbifbcaghhmjlbekndec
 
+## Support
+If you like my work and wish to show your appreciation, you can [buy me a coffee!](https://buymeacoffee.com/pbarnum)
+
 ## License
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
