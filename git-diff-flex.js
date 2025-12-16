@@ -42,7 +42,7 @@
 
     const tables = document.querySelectorAll(`.${classes.table}`);
     for (let i = 0; i < tables.length; ++i) {
-      if (isWordWrapEnabled()) {
+      if (!isWordWrapEnabled()) {
         tables[i].classList.add(classes.clipped);
       } else {
         tables[i].classList.remove(classes.clipped);
@@ -81,24 +81,53 @@
   };
 
   /**
-   * Gets the "deletion" table column. This is used to apply positioning.
+   * Known selectors within the DOM.
    */
-  function getSplitWidthNode(table) {
-    return table.querySelector("colgroup>col:nth-child(2)");
+  const selectors = {
+    legacyFile: '.file',
+    legacyFileHeader: ".file-info",
+
+    file: 'div[role="region"]',
+    table: 'table',
+    fileHeader: "div[class*=diff-file-header] > div:last-child",
+    delLine: "colgroup > col:nth-child(1)",
+    delCode: "colgroup > col:nth-child(2)",
+    addLine: "colgroup > col:nth-child(3)",
+    addCode: "colgroup > col:nth-child(4)",
   }
+
+  /**
+   * Cache object to store per-file state.
+   *
+   * Example:
+   *   {
+   *     "file_id": {
+   *       "splitWidth": "100",                   // Width of the "deletion" column in split view
+   *       "buttonState": "gdf-btn-toggle-split", // Current state of the toggle button
+   *       "handle": {
+   *         "position": {
+   *           "height": 0,
+   *           "left": 0,
+   *           "top": 0
+   *         }
+   *       }
+   *     }
+   *   }
+   */
+  const cache = {};
 
   /**
    * Updates the width for the "deletion" table column.
    */
-  function updateSplitWidth(node, val) {
-    node.style.width = `${val}px`;
+  function updateSplitWidth(table, val) {
+    table.querySelector(selectors.delCode).style.width = `${val}px`;
   }
 
   /**
    * Determines the "deletion" number column dimensions depending on the type of diff.
    */
   function getDeletionNumberColumn(table) {
-    const delNumCol = table.querySelector("td.blob-num-deletion");
+    const delNumCol = table.querySelector(selectors.delLine);
     if (delNumCol) {
       return delNumCol.getBoundingClientRect();
     }
@@ -110,7 +139,7 @@
     };
 
     const tableRect = table.getBoundingClientRect();
-    const addNumCol = table.querySelector("td.blob-num-addition");
+    const addNumCol = table.querySelector(selectors.addLine);
     if (addNumCol) {
       const colRect = addNumCol.getBoundingClientRect();
       rect.left = tableRect.left;
@@ -129,7 +158,7 @@
    * Determines the addition column dimensions depending on the type of diff.
    */
   function getAdditionNumberColumn(table) {
-    const addNumCol = table.querySelector("td.blob-num-addition");
+    const addNumCol = table.querySelector(selectors.addLine);
     if (addNumCol) {
       return addNumCol.getBoundingClientRect();
     }
@@ -141,10 +170,10 @@
     };
 
     const tableRect = table.getBoundingClientRect();
-    const delNumCol = table.querySelector("td.blob-num-deletion");
+    const delNumCol = table.querySelector(selectors.delLine);
     if (delNumCol) {
       const colRect = delNumCol.getBoundingClientRect();
-      rect.left = table.querySelector("td.blob-code-deletion").getBoundingClientRect().right;
+      rect.left = table.querySelector(selectors.delCode).getBoundingClientRect().right;
       rect.right = rect.left + colRect.width;
       rect.width = colRect.width;
     } else {
@@ -160,27 +189,30 @@
    * Find all diff tables that have not been initialized.
    */
   function findTables() {
-    const files = document.querySelectorAll(`.file:not(.${classes.file}`);
+    const files = document.querySelectorAll(`${selectors.legacyFile},${selectors.file}`);
     for (let i = 0; i < files.length; ++i) {
       const file = files[i];
 
       // Don't mark this file if it's table does not yet exist
-      const table = file.querySelector(`table.diff-table.file-diff-split:not(.${classes.table})`);
+      const table = file.querySelector(`${selectors.table}:not(.${classes.table})`);
       if (!table) {
         continue;
       }
 
-      file.classList.add(classes.file);
-
-      // Generate and append the "handle" element
       const handle = generateHandle(file);
 
       // Generate and append the "toggle" view button
-      const btn = constructToggleButton(file, table, handle);
+      const btn = generateToggleButton(file, table, handle);
+
+      // Restore cached column width if it exists
+      const cached = cache[file.id];
+      if (cached?.splitWidth) {
+        updateSplitWidth(table, cached.splitWidth);
+      }
 
       // Customize the table element
       table.classList.add(classes.table);
-      if (isWordWrapEnabled()) {
+      if (!isWordWrapEnabled()) {
         table.classList.add(classes.clipped);
       }
       table.addEventListener("mouseenter", showHandle(file, table, handle));
@@ -194,6 +226,24 @@
 
       ro.observe(table);
 
+      // Wait for layout to complete before restoring cached position
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const cached = cache[file.id];
+          if (cached?.handle?.position) {
+            const { height, left, top } = cached.handle.position;
+            if (height && left !== undefined && top !== undefined) {
+              handle.style.height = `${height}px`;
+              handle.style.left = `${left}px`;
+              handle.style.top = `${top}px`;
+            }
+          } else {
+            // First time, calculate default position
+            calculateHandlePosition(file, table, handle);
+          }
+        });
+      });
+
       // Remove the ability to drag the handle when the mouse button is up
       file.addEventListener("mouseup", function () {
         handle.classList.remove(classes.drag);
@@ -205,25 +255,32 @@
         if (handle.classList.contains(classes.drag)) {
           const tableRect = table.getBoundingClientRect();
           const numColDelRect = getDeletionNumberColumn(table);
-          const widthNode = getSplitWidthNode(table);
-          const capLeft = numColDelRect.left + numColDelRect.width + 100;
-          const capRight = tableRect.right - numColDelRect.width - 100;
+          const addNumColRect = getAdditionNumberColumn(table);
+          const capLeft = numColDelRect.right;
+          const capRight = tableRect.right - addNumColRect.width;
 
-          if (e.clientX > capRight) {
+          let width = 0;
+          let handleLeft = 0;
+
+          if (e.clientX >= capRight) {
             // Stop moving if over the right cap
-            handle.style.left = `${capRight - tableRect.left}px`;
-            updateSplitWidth(widthNode, capRight - numColDelRect.left - numColDelRect.width + 1);
+            handleLeft = capRight - tableRect.left;
+            width = capRight - numColDelRect.right;
             toggleButtonDeletions(btn);
-          } else if (e.clientX < capLeft) {
+          } else if (e.clientX <= capLeft) {
             // Stop moving if over the left cap
-            handle.style.left = `${capLeft - numColDelRect.left}px`;
-            updateSplitWidth(widthNode, capLeft - numColDelRect.right + 1);
+            handleLeft = capLeft - tableRect.left;
+            width = capLeft - numColDelRect.right;
             toggleButtonAdditions(btn);
           } else {
-            handle.style.left = `${e.clientX - tableRect.left}px`;
-            updateSplitWidth(widthNode, handle.getBoundingClientRect().left - numColDelRect.right + 1);
+            handleLeft = e.clientX - tableRect.left;
+            width = e.clientX - numColDelRect.right;
             toggleButtonSplit(btn);
           }
+
+          updateSplitWidth(table, width);
+          handle.style.left = `${handleLeft}px`;
+          cache[file.id].splitWidth = width;
 
           // Last check to see if handle height is same as table height
           calculateHandlePosition(file, table, handle);
@@ -235,8 +292,10 @@
   /**
    * Builds a new toggle button to be added to the "file" element.
    */
-  function constructToggleButton(file, table, handle) {
-    const header = file.querySelector(".file-info");
+  function generateToggleButton(file, table, handle) {
+    file.querySelector(`.${classes.toggleButton}`)?.remove();
+
+    const header = file.querySelector(`${selectors.fileHeader},${selectors.legacyFileHeader}`);
     const btn = document.createElement("button");
     btn.innerText = "Split";
     btn.classList.add("btn", "btn-sm", "btn-primary", classes.toggleButton, classes.toggleSplit);
@@ -245,10 +304,22 @@
     const div = document.createElement("div");
     div.append(btn);
     div.classList.add("flex-shrink-0");
-    header.after(div);
+    header.append(div);
 
     if (!isToggleButtonsEnabled()) {
       btn.classList.add(classes.hidden);
+    }
+
+    // Restore cached button state if it exists
+    const cached = cache[file.id];
+    if (cached?.buttonState) {
+      if (cached.buttonState === classes.toggleAdditions) {
+        toggleButtonAdditions(btn);
+      } else if (cached.buttonState === classes.toggleDeletions) {
+        toggleButtonDeletions(btn);
+      } else {
+        toggleButtonSplit(btn);
+      }
     }
 
     return btn;
@@ -263,22 +334,31 @@
 
       const tableRect = table.getBoundingClientRect();
       const numColDelRect = getDeletionNumberColumn(table);
-      const widthNode = getSplitWidthNode(table);
-      const capLeft = numColDelRect.left + numColDelRect.width + 100;
-      const capRight = tableRect.right - numColDelRect.width - 100;
+      const addNumColRect = getAdditionNumberColumn(table);
+      const capLeft = numColDelRect.right;
+      const capRight = tableRect.right - addNumColRect.width;
 
+      let handleLeft = 0;
+      let width = 0;
       if (btn.classList.contains(classes.toggleSplit)) {
-        handle.style.left = `${capLeft - tableRect.left}px`;
+        handleLeft = capLeft - tableRect.left;
+        width = capLeft - numColDelRect.right + 1;
         toggleButtonAdditions(btn);
-        updateSplitWidth(widthNode, capLeft - numColDelRect.right + 1);
       } else if (btn.classList.contains(classes.toggleAdditions)) {
-        handle.style.left = `${capRight - tableRect.left}px`;
+        handleLeft = capRight - tableRect.left;
+        width = capRight - numColDelRect.right + 1;
         toggleButtonDeletions(btn);
-        updateSplitWidth(widthNode, capRight - numColDelRect.left - numColDelRect.width + 1);
       } else if (btn.classList.contains(classes.toggleDeletions)) {
-        handle.style.left = `${tableRect.width / 2}px`;
+        handleLeft = tableRect.width / 2;
+        width = tableRect.width / 2 - numColDelRect.width;
         toggleButtonSplit(btn);
-        updateSplitWidth(widthNode, tableRect.width / 2 - numColDelRect.width);
+      }
+
+      handle.style.left = `${handleLeft}px`;
+      updateSplitWidth(table, width);
+      const file = btn.closest(`${selectors.legacyFile},${selectors.file}`);
+      if (file && cache[file.id]) {
+        cache[file.id].splitWidth = width;
       }
     };
   }
@@ -290,6 +370,12 @@
     btn.innerText = "Split";
     btn.classList.remove(classes.toggleAdditions, classes.toggleDeletions);
     btn.classList.add(classes.toggleSplit);
+
+    // Cache button state
+    const file = btn.closest(`${selectors.legacyFile},${selectors.file}`);
+    if (file && cache[file.id]) {
+      cache[file.id].buttonState = classes.toggleSplit;
+    }
   }
 
   /**
@@ -299,6 +385,12 @@
     btn.innerText = "Additions";
     btn.classList.remove(classes.toggleSplit, classes.toggleDeletions);
     btn.classList.add(classes.toggleAdditions);
+
+    // Cache button state
+    const file = btn.closest(`${selectors.legacyFile},${selectors.file}`);
+    if (file && cache[file.id]) {
+      cache[file.id].buttonState = classes.toggleAdditions;
+    }
   }
 
   /**
@@ -308,6 +400,12 @@
     btn.innerText = "Deletions";
     btn.classList.remove(classes.toggleSplit, classes.toggleAdditions);
     btn.classList.add(classes.toggleDeletions);
+
+    // Cache button state
+    const file = btn.closest(`${selectors.legacyFile},${selectors.file}`);
+    if (file && cache[file.id]) {
+      cache[file.id].buttonState = classes.toggleDeletions;
+    }
   }
 
   /**
@@ -326,6 +424,12 @@
     const top = tableRect.top - bodyRect.top;
     const centerRect = getAdditionNumberColumn(table);
 
+    cache[file.id].handle.position = {
+      height: tableRect.height,
+      left: centerRect.left - tableRect.left - 1,
+      top: top,
+    };
+
     handle.style.height = `${tableRect.height}px`;
     handle.style.left = `${centerRect.left - tableRect.left - 1}px`;
     handle.style.top = `${top}px`;
@@ -335,6 +439,10 @@
    * Create the handle singleton and append it to the DOM.
    */
   function generateHandle(file) {
+    file.querySelector(`.${classes.handle}`)?.remove();
+    if (!cache[file.id]) cache[file.id] = {};
+    if (!cache[file.id].handle) cache[file.id].handle = { position: {} };
+
     const handle = document.createElement("div");
     handle.classList.add(classes.handle);
 
@@ -358,17 +466,11 @@
   tmpobserver = new MutationObserver(() => {
     // In case the page takes longer to load, obtain and observe when the "files"
     // element comes into the DOM.
-    const files = document.getElementById('files');
+    const files = document.querySelectorAll(`${selectors.legacyFile},${selectors.file}`);
     if (files) {
       findTables();
-      const observer = new MutationObserver(findTables);
-      observer.observe(files, { childList: true, subtree: true });
-      tmpobserver.disconnect();
     }
   });
   tmpobserver.observe(document.body, { childList: true, subtree: true });
-
-  // Find existing tables and initialize the script.
-  findTables();
 
 })(document);
