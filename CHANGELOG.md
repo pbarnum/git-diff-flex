@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/pbarnum/git-diff-flex/compare/v1.1.1...v1.1.2) (2025-12-18)
+
+
+### Bug Fixes
+
+* **no-ticket:** Uses PAT_TOKEN ([c4c82bb](https://github.com/pbarnum/git-diff-flex/commit/c4c82bb1c34687def5f1db2c4414cbe308060929))
+
 ## [1.1.1](https://github.com/pbarnum/git-diff-flex/compare/v1.1.0...v1.1.1) (2025-12-18)
 
 
