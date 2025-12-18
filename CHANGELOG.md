@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/pbarnum/git-diff-flex/compare/v1.1.2...v1.1.3) (2025-12-18)
+
+
+### Bug Fixes
+
+* **no-ticket:** simplified CICD ([1c0e038](https://github.com/pbarnum/git-diff-flex/commit/1c0e0380e6f0d187e84d9adaa372f7273274e255))
+
 ## [1.1.2](https://github.com/pbarnum/git-diff-flex/compare/v1.1.1...v1.1.2) (2025-12-18)
 
 
