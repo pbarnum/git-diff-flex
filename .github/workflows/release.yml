@@ -1,30 +1,174 @@
-name: Build Chrome Extension
+name: Semantic Release
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Override version (leave empty for automatic semantic versioning)'
+        required: false
+        type: string
+      release_type:
+        description: 'Release type (only used if version is not specified)'
+        required: false
+        type: choice
+        default: 'auto'
+        options:
+          - auto
+          - patch
+          - minor
+          - major
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || github.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get version from manifest
-        id: version
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install semantic-release
+        run: |
+          npm install -g \
+            semantic-release \
+            @semantic-release/git \
+            @semantic-release/changelog \
+            @semantic-release/github \
+            @semantic-release/exec \
+            conventional-changelog-conventionalcommits
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine version
+        id: determine_version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            # Manual override
+            VERSION="${{ inputs.version }}"
+            echo "Using manual version: $VERSION"
+          else
+            # Get current version
+            CURRENT_VERSION=$(jq -r '.version' manifest.json)
+
+            if [ "${{ inputs.release_type }}" = "auto" ]; then
+              # Let semantic-release decide
+              echo "Using automatic semantic versioning"
+              VERSION="auto"
+            else
+              # Manual bump type
+              IFS='.' read -ra VER <<< "$CURRENT_VERSION"
+              MAJOR="${VER[0]}"
+              MINOR="${VER[1]}"
+              PATCH="${VER[2]}"
+
+              case "${{ inputs.release_type }}" in
+                major)
+                  MAJOR=$((MAJOR + 1))
+                  MINOR=0
+                  PATCH=0
+                  ;;
+                minor)
+                  MINOR=$((MINOR + 1))
+                  PATCH=0
+                  ;;
+                patch)
+                  PATCH=$((PATCH + 1))
+                  ;;
+              esac
+
+              VERSION="${MAJOR}.${MINOR}.${PATCH}"
+              echo "Using ${{ inputs.release_type }} bump: $VERSION"
+            fi
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update manifest version
+        if: steps.determine_version.outputs.version != 'auto'
+        run: |
+          VERSION="${{ steps.determine_version.outputs.version }}"
+          jq --arg version "$VERSION" '.version = $version' manifest.json > manifest.tmp.json
+          mv manifest.tmp.json manifest.json
+          git add manifest.json
+          git commit -m "chore(release): v$VERSION" || echo "No changes to commit"
+
+      - name: Run semantic-release
+        if: steps.determine_version.outputs.version == 'auto'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > .releaserc.json << 'EOF'
+          {
+            "branches": ["main"],
+            "plugins": [
+              ["@semantic-release/commit-analyzer", {
+                "preset": "conventionalcommits",
+                "releaseRules": [
+                  {"type": "feat", "release": "minor"},
+                  {"type": "fix", "release": "patch"},
+                  {"type": "perf", "release": "patch"},
+                  {"type": "revert", "release": "patch"},
+                  {"type": "docs", "release": "patch"},
+                  {"type": "style", "release": "patch"},
+                  {"type": "refactor", "release": "patch"},
+                  {"type": "test", "release": "patch"},
+                  {"type": "build", "release": "patch"},
+                  {"type": "ci", "release": "patch"},
+                  {"type": "chore", "release": "patch"},
+                  {"breaking": true, "release": "major"}
+                ]
+              }],
+              "@semantic-release/release-notes-generator",
+              ["@semantic-release/changelog", {
+                "changelogFile": "CHANGELOG.md"
+              }],
+              ["@semantic-release/exec", {
+                "prepareCmd": "jq --arg version \"${nextRelease.version}\" '.version = $version' manifest.json > manifest.tmp.json && mv manifest.tmp.json manifest.json"
+              }],
+              ["@semantic-release/git", {
+                "assets": ["manifest.json", "CHANGELOG.md"],
+                "message": "chore(release): v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+              }],
+              "@semantic-release/github"
+            ]
+          }
+          EOF
+
+          npx semantic-release
+
+      - name: Create manual release
+        if: steps.determine_version.outputs.version != 'auto'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.determine_version.outputs.version }}"
+
+          # Push the version update
+          git push origin main
+
+      - name: Get final version
+        id: final_version
         run: |
           VERSION=$(jq -r '.version' manifest.json)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extension version: $VERSION"
 
       - name: Create distribution directory
-        run: |
-          mkdir -p dist
+        run: mkdir -p dist
 
       - name: Copy extension files
         run: |
@@ -35,7 +179,6 @@ jobs:
           cp options.html dist/
           cp options.js dist/
           cp README.md dist/
-          # Copy icon if it exists
           if [ -f icon_128.png ]; then
             cp icon_128.png dist/
           fi
@@ -43,30 +186,53 @@ jobs:
       - name: Create ZIP for Chrome Web Store
         run: |
           cd dist
-          zip -r ../git-diff-flex-v${{ steps.version.outputs.version }}.zip .
+          zip -r ../git-diff-flex-v${{ steps.final_version.outputs.version }}.zip .
           cd ..
 
-      - name: Upload Release Asset
-        if: github.event_name == 'release'
+      - name: Create and push tag
+        if: steps.determine_version.outputs.version != 'auto'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload ${{ github.event.release.tag_name }} \
-            git-diff-flex-v${{ steps.version.outputs.version }}.zip \
-            --clobber
+          VERSION="${{ steps.final_version.outputs.version }}"
+          TAG="v$VERSION"
+
+          # Create and push tag
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub release and upload ZIP
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.final_version.outputs.version }}"
+
+          # Create GitHub release
+          if [ "${{ steps.determine_version.outputs.version }}" != "auto" ]; then
+            gh release create "$TAG" \
+              --title "Release $TAG" \
+              --notes "Release v${{ steps.final_version.outputs.version }}" \
+              --target main \
+              git-diff-flex-v${{ steps.final_version.outputs.version }}.zip
+          else
+            # For auto releases, semantic-release already created it, just upload
+            gh release upload "$TAG" \
+              git-diff-flex-v${{ steps.final_version.outputs.version }}.zip \
+              --clobber
+          fi
 
       - name: Upload ZIP as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: git-diff-flex-v${{ steps.version.outputs.version }}
-          path: git-diff-flex-v${{ steps.version.outputs.version }}.zip
+          name: git-diff-flex-v${{ steps.final_version.outputs.version }}
+          path: git-diff-flex-v${{ steps.final_version.outputs.version }}.zip
           retention-days: 90
 
       - name: Upload to Chrome Web Store
-        if: github.event_name == 'release'
+        if: secrets.CHROME_EXTENSION_ID != ''
         uses: mnao305/chrome-extension-upload@v5.0.0
         with:
-          file-path: git-diff-flex-v${{ steps.version.outputs.version }}.zip
+          file-path: git-diff-flex-v${{ steps.final_version.outputs.version }}.zip
           extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
           client-id: ${{ secrets.CHROME_CLIENT_ID }}
           client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
