@@ -1,0 +1,164 @@
+/* Material Design - Draggable Handle */
+.gdf-handle {
+  position: absolute;
+  width: 4px;
+  background-color: #1976d2;
+  cursor: col-resize;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.gdf-handle:hover {
+  width: 6px;
+  background-color: #2196f3;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.gdf-handle:active,
+.gdf-handle.gdf-drag {
+  background-color: #1565c0;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Disable transitions when dragging for immediate response */
+.gdf-handle.gdf-drag {
+  transition: none;
+}
+
+.gdf-hidden {
+  display: none !important;
+}
+
+.gdf-parent:hover .gdf-handle {
+  display: block;
+}
+
+/* Material Design - Word Wrap Styles */
+.gdf-table-clipped td.blob-code,
+.gdf-table-clipped td.diff-text-cell {
+  max-width: 0;
+  overflow-y: hidden;
+  overflow-x: scroll;
+  white-space: nowrap;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.gdf-table-clipped td.blob-code::-webkit-scrollbar,
+.gdf-table-clipped td.diff-text-cell::-webkit-scrollbar {
+  display: none;
+}
+
+.gdf-table-clipped td.blob-code.blob-code-inner,
+.gdf-table-clipped td.blob-code .blob-code-inner,
+.gdf-table-clipped td.diff-text-cell .diff-text-inner {
+  white-space: pre;
+}
+
+.gdf-table-clipped td.diff-text-cell .diff-text-inner {
+  overflow-x: scroll;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.gdf-table-clipped button.add-line-comment {
+  position: fixed;
+}
+
+.gdf-table-clipped td.line-comments {
+  overflow-x: hidden;
+}
+
+.gdf-table-clipped td.line-comments>div.comment-holder {
+  min-width: 780px;
+}
+
+/* Material Design - Toggle Buttons */
+.gdf-btn-toggle-split,
+.gdf-btn-toggle-add,
+.gdf-btn-toggle-del {
+  min-width: 88px;
+  height: 28px;
+  padding: 0 16px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 4px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: none !important;
+}
+
+.gdf-btn-toggle-split {
+  background: linear-gradient(90deg,
+      #f44336 0%,
+      #f44336 48%,
+      #424242 49%,
+      #424242 51%,
+      #4caf50 52%,
+      #4caf50 100%);
+}
+
+.gdf-btn-toggle-split:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.gdf-btn-toggle-split:active {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transform: translateY(0);
+}
+
+.gdf-btn-toggle-add {
+  background: linear-gradient(90deg,
+      #f44336 0%,
+      #f44336 23%,
+      #424242 24%,
+      #424242 25%,
+      #4caf50 26%,
+      #4caf50 100%);
+}
+
+.gdf-btn-toggle-add:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.gdf-btn-toggle-add:active {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transform: translateY(0);
+}
+
+.gdf-btn-toggle-del {
+  background: linear-gradient(90deg,
+      #f44336 0%,
+      #f44336 73%,
+      #424242 74%,
+      #424242 75%,
+      #4caf50 76%,
+      #4caf50 100%);
+}
+
+.gdf-btn-toggle-del:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.gdf-btn-toggle-del:active {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transform: translateY(0);
+}
+
+/* Material Design - Ripple Effect Support */
+.gdf-btn-toggle-split,
+.gdf-btn-toggle-add,
+.gdf-btn-toggle-del {
+  position: relative;
+  overflow: hidden;
+}
+
+div[class*=addCommentButton] {
+  left: 0px;
+}

@@ -7,9 +7,7 @@
     "storage"
   ],
   "background": {
-    "service_scripts": [
-      "background.js"
-    ]
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
@@ -24,10 +22,10 @@
         "*://*.github.com/*/*/compare/*"
       ],
       "css": [
-        "git-diff-flex.css"
+        "content.css"
       ],
       "js": [
-        "git-diff-flex.js"
+        "content.js"
       ]
     }
   ],

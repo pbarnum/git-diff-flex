@@ -1,0 +1,96 @@
+name: Version Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump: auto (default), patch, minor, or major'
+        required: false
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine next version
+        id: bump
+        env:
+          BUMP_INPUT: ${{ inputs.bump }}
+        run: |
+          set -e
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+          echo "Current version: $CURRENT_VERSION"
+
+          if [ "$BUMP_INPUT" = "auto" ] || [ -z "$BUMP_INPUT" ]; then
+            echo "Auto bump selected via conventional commits"
+            BUMP=$(npx conventional-recommended-bump -p conventionalcommits -r 0 | tr -d '\n' || true)
+            if [ -z "$BUMP" ]; then
+              echo "No recommended bump (no conventional commits since last tag)."
+              echo "should_release=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            echo "Recommended bump: $BUMP"
+          else
+            BUMP="$BUMP_INPUT"
+            echo "Manual bump selected: $BUMP"
+          fi
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          case "$BUMP" in
+            major)
+              MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor)
+              MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch)
+              PATCH=$((PATCH + 1)) ;;
+            *)
+              echo "Unknown bump type: $BUMP"; echo "should_release=false" >> $GITHUB_OUTPUT; exit 0 ;;
+          esac
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "New version: $NEW_VERSION"
+          echo "should_release=true" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update versions and push
+        if: steps.bump.outputs.should_release == 'true'
+        env:
+          NEW_VERSION: ${{ steps.bump.outputs.new_version }}
+        run: |
+          set -e
+          # Update package.json and manifest.json
+          jq --arg version "$NEW_VERSION" '.version = $version' package.json > package.tmp.json && mv package.tmp.json package.json
+          jq --arg version "$NEW_VERSION" '.version = $version' manifest.json > manifest.tmp.json && mv manifest.tmp.json manifest.json
+
+          git add package.json manifest.json
+          git commit -m "chore(release): v$NEW_VERSION [skip ci]" || echo "No changes to commit"
+          git push origin main
+
+          # Create and push tag
+          git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+          git push origin "v$NEW_VERSION"
