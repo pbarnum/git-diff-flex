@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   bump:
@@ -94,3 +95,17 @@ jobs:
           # Create and push tag
           git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
           git push origin "v$NEW_VERSION"
+
+      - name: Trigger Release Workflow
+        if: steps.bump.outputs.should_release == 'true'
+        env:
+          NEW_VERSION: ${{ steps.bump.outputs.new_version }}
+        run: |
+          set -e
+          TAG="v$NEW_VERSION"
+          echo "Triggering release workflow for $TAG"
+          curl -s -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/release.yml/dispatches \
+            -d "{\"ref\":\"refs/tags/$TAG\"}"
