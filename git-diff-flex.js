@@ -304,7 +304,9 @@
     const div = document.createElement("div");
     div.append(btn);
     div.classList.add("flex-shrink-0");
-    header.append(div);
+    if (header) {
+      header.append(div);
+    }
 
     if (!isToggleButtonsEnabled()) {
       btn.classList.add(classes.hidden);
