@@ -1,0 +1,74 @@
+name: Build Chrome Extension
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Get version from manifest
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' manifest.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extension version: $VERSION"
+
+      - name: Create distribution directory
+        run: |
+          mkdir -p dist
+
+      - name: Copy extension files
+        run: |
+          cp manifest.json dist/
+          cp background.js dist/
+          cp git-diff-flex.css dist/
+          cp git-diff-flex.js dist/
+          cp options.html dist/
+          cp options.js dist/
+          cp README.md dist/
+          # Copy icon if it exists
+          if [ -f icon_128.png ]; then
+            cp icon_128.png dist/
+          fi
+
+      - name: Create ZIP for Chrome Web Store
+        run: |
+          cd dist
+          zip -r ../git-diff-flex-v${{ steps.version.outputs.version }}.zip .
+          cd ..
+
+      - name: Upload Release Asset
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} \
+            git-diff-flex-v${{ steps.version.outputs.version }}.zip \
+            --clobber
+
+      - name: Upload ZIP as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: git-diff-flex-v${{ steps.version.outputs.version }}
+          path: git-diff-flex-v${{ steps.version.outputs.version }}.zip
+          retention-days: 90
+
+      - name: Upload to Chrome Web Store
+        if: github.event_name == 'release'
+        uses: mnao305/chrome-extension-upload@v5.0.0
+        with:
+          file-path: git-diff-flex-v${{ steps.version.outputs.version }}.zip
+          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+          client-id: ${{ secrets.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          publish: true
