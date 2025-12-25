@@ -12,6 +12,7 @@ import {
   Box,
   Alert,
   Fade,
+  Button,
 } from '@mui/material';
 
 interface Settings {
@@ -97,10 +98,33 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Container sx={{ py: 2, minWidth: 300 }}>
+      <Container sx={{ py: 2, minWidth: 400 }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4 }}>
           Git Diff Flex: Settings
         </Typography>
+
+        <Box sx={{ mb: 2, textAlign: 'center' }}>
+          <Button
+            variant="contained"
+            color="primary"
+            href="https://buymeacoffee.com/pbarnum"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              backgroundColor: '#FFDD00',
+              color: '#000000',
+              fontWeight: 'bold',
+              textTransform: 'none',
+              px: 3,
+              py: 1.5,
+              '&:hover': {
+                backgroundColor: '#FFED4E',
+              },
+            }}
+          >
+            ☕ Buy me a coffee
+          </Button>
+        </Box>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Paper elevation={1} sx={{ p: 3 }}>
