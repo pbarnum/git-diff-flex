@@ -4,7 +4,13 @@
   "description": "Git Diff Flex adds a draggable pane bezel between two files when comparing diffs! Currently only for Github.",
   "permissions": [
     "declarativeContent",
-    "storage"
+    "storage",
+    "scripting",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "*://github.com/*",
+    "*://*.github.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -12,12 +18,10 @@
   "content_scripts": [
     {
       "matches": [
-        "*://github.com/*/*/pull/*/files*",
-        "*://github.com/*/*/pull/*/changes*",
+        "*://github.com/*/*/pull/*",
         "*://github.com/*/*/commit/*",
         "*://github.com/*/*/compare/*",
-        "*://*.github.com/*/*/pull/*/files*",
-        "*://*.github.com/*/*/pull/*/changes*",
+        "*://*.github.com/*/*/pull/*",
         "*://*.github.com/*/*/commit/*",
         "*://*.github.com/*/*/compare/*"
       ],

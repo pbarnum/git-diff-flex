@@ -1,6 +1,6 @@
 /// <reference types="chrome"/>
 
-import { CLASSES, SELECTORS, CacheStore, ButtonState } from '@/types';
+import { CLASSES, CacheStore } from '@/types';
 import { DOMUtils } from './DOMUtils';
 
 /**

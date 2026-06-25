@@ -6,6 +6,13 @@ import { HandleManager } from './HandleManager';
 import { DOMUtils } from './DOMUtils';
 import './styles.css';
 
+declare global {
+  interface Window {
+    __GDF_LOADED__?: boolean;
+    __GDF_RESCAN__?: () => void;
+  }
+}
+
 /**
  * Main content script for Git Diff Flex
  */
@@ -19,14 +26,18 @@ class GitDiffFlex {
     this.initialize();
   }
 
+  /**
+   * Re-scan the page for uninitialized diff tables (SPA navigation, lazy load).
+   */
+  public rescan(): void {
+    this.findTables();
+  }
+
   private initialize(): void {
+    this.findTables();
+
     const observer = new MutationObserver(() => {
-      const files = document.querySelectorAll<HTMLElement>(
-        `${SELECTORS.legacyFile},${SELECTORS.file}`
-      );
-      if (files.length > 0) {
-        this.findTables();
-      }
+      this.findTables();
     });
     observer.observe(document.body, { childList: true, subtree: true });
   }
@@ -62,15 +73,14 @@ class GitDiffFlex {
       if (!this.configManager.isWordWrapEnabled()) {
         table.classList.add(CLASSES.clipped);
       }
+
       table.addEventListener('mouseenter', () =>
         handleManager.calculateHandlePosition(handle)
       );
 
       // Observe the table's resize events
-      const ro = new ResizeObserver((entries) => {
-        entries.forEach((entry) => {
-          handleManager.calculateHandlePosition(handle);
-        });
+      const ro = new ResizeObserver(() => {
+        handleManager.calculateHandlePosition(handle);
       });
       ro.observe(table);
 
@@ -165,5 +175,15 @@ class GitDiffFlex {
   }
 }
 
-// Initialize the extension
-new GitDiffFlex();
+function bootstrap(): void {
+  if (window.__GDF_LOADED__) {
+    window.__GDF_RESCAN__?.();
+    return;
+  }
+
+  window.__GDF_LOADED__ = true;
+  const instance = new GitDiffFlex();
+  window.__GDF_RESCAN__ = () => instance.rescan();
+}
+
+bootstrap();

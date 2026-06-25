@@ -70,7 +70,7 @@ const App: React.FC = () => {
   }, []);
 
   const saveSettings = (newSettings: Settings) => {
-    let updatedSettings = { ...newSettings };
+    const updatedSettings = { ...newSettings };
 
     // If toggle buttons are disabled, also disable word wrap
     if (!newSettings.toggleButtons) {
@@ -145,7 +145,7 @@ const App: React.FC = () => {
               />
             </Box>
             <Typography variant="body2" color="text.secondary">
-              Toggle buttons are located in the file's header and are used to
+              Toggle buttons are located in the file&apos;s header and are used to
               quickly switch between viewing the deletions, additions, or both
               (split).
             </Typography>
@@ -171,8 +171,8 @@ const App: React.FC = () => {
             </Box>
             <Typography variant="body2" color="text.secondary">
               By default, the code blocks in both file versions will wrap to the
-              next line. This setting is available when "Toggle Buttons" is
-              enabled and toggled "on".
+              next line. This setting is available when &quot;Toggle Buttons&quot; is
+              enabled and toggled &quot;on&quot;.
             </Typography>
           </Paper>
         </Box>
