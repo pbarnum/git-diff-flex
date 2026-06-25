@@ -21,10 +21,10 @@ class ConfigManager {
     chrome.storage.onChanged.addListener((changes: Record<string, chrome.storage.StorageChange>, area: string) => {
       if (area === 'sync') {
         if (changes.toggleButtons) {
-          this.config.toggleButtons = changes.toggleButtons.newValue;
+          this.config.toggleButtons = changes.toggleButtons.newValue as boolean;
         }
         if (changes.wordWrap) {
-          this.config.wordWrap = changes.wordWrap.newValue;
+          this.config.wordWrap = changes.wordWrap.newValue as boolean;
         }
         this.notifyListeners();
       }
